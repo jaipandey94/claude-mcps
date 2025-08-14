@@ -13,6 +13,7 @@ import base64
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from urllib.parse import urlencode
+from dotenv import load_dotenv
 
 # MCP imports
 from mcp.server import Server
@@ -169,12 +170,17 @@ def initialize_graph_client():
     """Initialize the Graph client with stored credentials"""
     global graph_client
     
-    # Get credentials from environment variables
-    client_id = os.getenv("AZURE_CLIENT_ID")
-    client_secret = os.getenv("AZURE_CLIENT_SECRET")
+    # Load credentials from .env file
+    load_dotenv()
+    
+    client_id = os.getenv("CLIENT_ID")
+    client_secret = os.getenv("CLIENT_SECRET")
     
     if not client_id or not client_secret:
-        print("❌ Missing AZURE_CLIENT_ID or AZURE_CLIENT_SECRET environment variables", file=sys.stderr)
+        print("❌ Missing CLIENT_ID or CLIENT_SECRET in .env file", file=sys.stderr)
+        print("   Please check your .env file contains:", file=sys.stderr)
+        print("   CLIENT_ID=your-actual-client-id", file=sys.stderr)
+        print("   CLIENT_SECRET=your-actual-client-secret", file=sys.stderr)
         return False
     
     graph_client = GraphClient(client_id, client_secret)
