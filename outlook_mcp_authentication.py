@@ -9,10 +9,14 @@ import webbrowser
 import json
 import os
 from urllib.parse import urlencode
+from dotenv import load_dotenv
 
-# CONFIGURATION - Update these with your Azure app values
-CLIENT_ID = "your-client-id-here"  # Replace with your Application (client) ID
-CLIENT_SECRET = "your-client-secret-here"  # Replace with your client secret
+# Load environment variables from .env file
+load_dotenv()
+
+# CONFIGURATION - Load from environment variables
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 REDIRECT_URI = "http://localhost:8000/callback"
 TENANT_ID = "common"  # Use "consumers" if you only want personal accounts
 
@@ -23,8 +27,11 @@ def authenticate():
     print("=" * 50)
     
     # Validate configuration
-    if CLIENT_ID == "your-client-id-here" or CLIENT_SECRET == "your-client-secret-here":
-        print("❌ ERROR: Please update CLIENT_ID and CLIENT_SECRET with your actual values")
+    if not CLIENT_ID or not CLIENT_SECRET:
+        print("❌ ERROR: CLIENT_ID and CLIENT_SECRET must be set in .env file")
+        print("   Please check your .env file contains:")
+        print("   CLIENT_ID=your-actual-client-id")
+        print("   CLIENT_SECRET=your-actual-client-secret")
         return False
     
     # Step 1: Generate authorization URL
