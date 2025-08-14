@@ -157,108 +157,108 @@ class GraphEmailClient:
         data = {"displayName": display_name}
         return self._make_request("POST", endpoint, data)
     
-    # EMAIL SENDING METHODS
+    # EMAIL SENDING METHODS (COMMENTED OUT - READ ONLY MODE)
     
-    def send_email(self, to_recipients, subject, body, cc_recipients=None, 
-                  bcc_recipients=None, attachments=None, body_type="HTML", 
-                  importance="normal", save_to_sent_items=True):
-        """Send an email message"""
-        
-        # Build recipient lists
-        def build_recipients(emails):
-            if isinstance(emails, str):
-                emails = [emails]
-            return [{"emailAddress": {"address": email}} for email in emails]
-        
-        message = {
-            "subject": subject,
-            "body": {
-                "contentType": body_type,
-                "content": body
-            },
-            "toRecipients": build_recipients(to_recipients),
-            "importance": importance
-        }
-        
-        if cc_recipients:
-            message["ccRecipients"] = build_recipients(cc_recipients)
-        
-        if bcc_recipients:
-            message["bccRecipients"] = build_recipients(bcc_recipients)
-        
-        if attachments:
-            message["attachments"] = self._prepare_attachments(attachments)
-        
-        data = {
-            "message": message,
-            "saveToSentItems": save_to_sent_items
-        }
-        
-        return self._make_request("POST", "/me/sendMail", data)
+    # def send_email(self, to_recipients, subject, body, cc_recipients=None, 
+    #              bcc_recipients=None, attachments=None, body_type="HTML", 
+    #              importance="normal", save_to_sent_items=True):
+    #    """Send an email message"""
+    #    
+    #    # Build recipient lists
+    #    def build_recipients(emails):
+    #        if isinstance(emails, str):
+    #            emails = [emails]
+    #        return [{"emailAddress": {"address": email}} for email in emails]
+    #    
+    #    message = {
+    #        "subject": subject,
+    #        "body": {
+    #            "contentType": body_type,
+    #            "content": body
+    #        },
+    #        "toRecipients": build_recipients(to_recipients),
+    #        "importance": importance
+    #    }
+    #    
+    #    if cc_recipients:
+    #        message["ccRecipients"] = build_recipients(cc_recipients)
+    #    
+    #    if bcc_recipients:
+    #        message["bccRecipients"] = build_recipients(bcc_recipients)
+    #    
+    #    if attachments:
+    #        message["attachments"] = self._prepare_attachments(attachments)
+    #    
+    #    data = {
+    #        "message": message,
+    #        "saveToSentItems": save_to_sent_items
+    #    }
+    #    
+    #    return self._make_request("POST", "/me/sendMail", data)
     
-    def create_draft(self, to_recipients, subject, body, cc_recipients=None, 
-                    bcc_recipients=None, attachments=None, body_type="HTML"):
-        """Create a draft email"""
-        
-        def build_recipients(emails):
-            if isinstance(emails, str):
-                emails = [emails]
-            return [{"emailAddress": {"address": email}} for email in emails]
-        
-        message = {
-            "subject": subject,
-            "body": {
-                "contentType": body_type,
-                "content": body
-            },
-            "toRecipients": build_recipients(to_recipients)
-        }
-        
-        if cc_recipients:
-            message["ccRecipients"] = build_recipients(cc_recipients)
-        
-        if bcc_recipients:
-            message["bccRecipients"] = build_recipients(bcc_recipients)
-        
-        if attachments:
-            message["attachments"] = self._prepare_attachments(attachments)
-        
-        return self._make_request("POST", "/me/messages", message)
+    # def create_draft(self, to_recipients, subject, body, cc_recipients=None, 
+    #                bcc_recipients=None, attachments=None, body_type="HTML"):
+    #    """Create a draft email"""
+    #    
+    #    def build_recipients(emails):
+    #        if isinstance(emails, str):
+    #            emails = [emails]
+    #        return [{"emailAddress": {"address": email}} for email in emails]
+    #    
+    #    message = {
+    #        "subject": subject,
+    #        "body": {
+    #            "contentType": body_type,
+    #            "content": body
+    #        },
+    #        "toRecipients": build_recipients(to_recipients)
+    #    }
+    #    
+    #    if cc_recipients:
+    #        message["ccRecipients"] = build_recipients(cc_recipients)
+    #    
+    #    if bcc_recipients:
+    #        message["bccRecipients"] = build_recipients(bcc_recipients)
+    #    
+    #    if attachments:
+    #        message["attachments"] = self._prepare_attachments(attachments)
+    #    
+    #    return self._make_request("POST", "/me/messages", message)
     
-    def send_draft(self, message_id):
-        """Send a draft message"""
-        return self._make_request("POST", f"/me/messages/{message_id}/send")
+    # def send_draft(self, message_id):
+    #    """Send a draft message"""
+    #    return self._make_request("POST", f"/me/messages/{message_id}/send")
     
-    def _prepare_attachments(self, attachments):
-        """Prepare attachments for email sending"""
-        prepared = []
-        
-        for attachment in attachments:
-            if isinstance(attachment, str):
-                # File path
-                with open(attachment, "rb") as f:
-                    content = base64.b64encode(f.read()).decode()
-                
-                filename = os.path.basename(attachment)
-                content_type = mimetypes.guess_type(attachment)[0] or "application/octet-stream"
-                
-                prepared.append({
-                    "@odata.type": "#microsoft.graph.fileAttachment",
-                    "name": filename,
-                    "contentBytes": content,
-                    "contentType": content_type
-                })
-            
-            elif isinstance(attachment, dict):
-                # Dictionary with file info
-                prepared.append({
-                    "@odata.type": "#microsoft.graph.fileAttachment",
-                    "name": attachment["name"],
-                    "contentBytes": attachment["content"],
-                    "contentType": attachment.get("content_type", "application/octet-stream")
-                })
-        
-        return prepared
+    # def _prepare_attachments(self, attachments):
+    #    """Prepare attachments for email sending"""
+    #    prepared = []
+    #    
+    #    for attachment in attachments:
+    #        if isinstance(attachment, str):
+    #            # File path
+    #            with open(attachment, "rb") as f:
+    #                content = base64.b64encode(f.read()).decode()
+    #            
+    #            filename = os.path.basename(attachment)
+    #            content_type = mimetypes.guess_type(attachment)[0] or "application/octet-stream"
+    #            
+    #            prepared.append({
+    #                "@odata.type": "#microsoft.graph.fileAttachment",
+    #                "name": filename,
+    #                "contentBytes": content,
+    #                "contentType": content_type
+    #            })
+    #        
+    #        elif isinstance(attachment, dict):
+    #            # Dictionary with file info
+    #            prepared.append({
+    #                "@odata.type": "#microsoft.graph.fileAttachment",
+    #                "name": attachment["name"],
+    #                "contentBytes": attachment["content"],
+    #                "contentType": attachment.get("content_type", "application/octet-stream")
+    #            })
+    #    
+    #    return prepared
     
     # EMAIL MANAGEMENT METHODS
     
@@ -375,14 +375,14 @@ def email_example():
         print(f"  Read: {email['isRead']}")
         print()
     
-    # Send a test email
-    client.send_email(
-        to_recipients=["recipient@example.com"],
-        subject="Test Email from Graph API",
-        body="<h1>Hello!</h1><p>This email was sent using Microsoft Graph API.</p>",
-        body_type="HTML"
-    )
-    print("Test email sent!")
+    # Send a test email (COMMENTED OUT - READ ONLY MODE)
+    # client.send_email(
+    #     to_recipients=["recipient@example.com"],
+    #     subject="Test Email from Graph API",
+    #     body="<h1>Hello!</h1><p>This email was sent using Microsoft Graph API.</p>",
+    #     body_type="HTML"
+    # )
+    # print("Test email sent!")
     
     # Search for emails
     search_results = client.search_messages("meeting")

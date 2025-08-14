@@ -73,31 +73,31 @@ class GraphClient:
         
         return self._make_request("GET", endpoint, params=params)
     
-    def send_email(self, to_recipients, subject, body, cc_recipients=None, body_type="HTML"):
-        """Send an email"""
-        def build_recipients(emails):
-            if isinstance(emails, str):
-                emails = [emails]
-            return [{"emailAddress": {"address": email}} for email in emails]
-        
-        message = {
-            "subject": subject,
-            "body": {
-                "contentType": body_type,
-                "content": body
-            },
-            "toRecipients": build_recipients(to_recipients)
-        }
-        
-        if cc_recipients:
-            message["ccRecipients"] = build_recipients(cc_recipients)
-        
-        data = {
-            "message": message,
-            "saveToSentItems": True
-        }
-        
-        return self._make_request("POST", "/me/sendMail", data)
+    # def send_email(self, to_recipients, subject, body, cc_recipients=None, body_type="HTML"):
+    #    """Send an email (COMMENTED OUT - READ ONLY MODE)"""
+    #    def build_recipients(emails):
+    #        if isinstance(emails, str):
+    #            emails = [emails]
+    #        return [{"emailAddress": {"address": email}} for email in emails]
+    #    
+    #    message = {
+    #        "subject": subject,
+    #        "body": {
+    #            "contentType": body_type,
+    #            "content": body
+    #        },
+    #        "toRecipients": build_recipients(to_recipients)
+    #    }
+    #    
+    #    if cc_recipients:
+    #        message["ccRecipients"] = build_recipients(cc_recipients)
+    #    
+    #    data = {
+    #        "message": message,
+    #        "saveToSentItems": True
+    #    }
+    #    
+    #    return self._make_request("POST", "/me/sendMail", data)
     
     def search_messages(self, query, top=25):
         """Search messages across all folders"""
@@ -217,34 +217,34 @@ async def handle_list_tools() -> List[types.Tool]:
                 }
             }
         ),
-        types.Tool(
-            name="send_email",
-            description="Send an email message",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "to": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Recipient email addresses"
-                    },
-                    "subject": {
-                        "type": "string",
-                        "description": "Email subject"
-                    },
-                    "body": {
-                        "type": "string",
-                        "description": "Email body content (supports HTML)"
-                    },
-                    "cc": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "CC recipients (optional)"
-                    }
-                },
-                "required": ["to", "subject", "body"]
-            }
-        ),
+        # types.Tool(
+        #     name="send_email",
+        #     description="Send an email message (DISABLED - READ ONLY MODE)",
+        #     inputSchema={
+        #         "type": "object",
+        #         "properties": {
+        #             "to": {
+        #                 "type": "array",
+        #                 "items": {"type": "string"},
+        #                 "description": "Recipient email addresses"
+        #             },
+        #             "subject": {
+        #                 "type": "string",
+        #                 "description": "Email subject"
+        #             },
+        #             "body": {
+        #                 "type": "string",
+        #                 "description": "Email body content (supports HTML)"
+        #             },
+        #             "cc": {
+        #                 "type": "array",
+        #                 "items": {"type": "string"},
+        #                 "description": "CC recipients (optional)"
+        #             }
+        #         },
+        #         "required": ["to", "subject", "body"]
+        #     }
+        # ),
         types.Tool(
             name="get_calendar_events",
             description="Get upcoming calendar events",
@@ -369,27 +369,12 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[types.T
                 text=f"📧 Found {len(emails)} emails{search_text}:\n\n" + "\n".join(email_summaries)
             )]
         
-        elif name == "send_email":
-            to_recipients = arguments["to"]
-            subject = arguments["subject"]
-            body = arguments["body"]
-            cc_recipients = arguments.get("cc")
-            
-            graph_client.send_email(
-                to_recipients=to_recipients,
-                subject=subject,
-                body=body,
-                cc_recipients=cc_recipients,
-                body_type="HTML"
-            )
-            
-            return [types.TextContent(
-                type="text",
-                text=f"✅ Email sent successfully!\n"
-                     f"   To: {', '.join(to_recipients)}\n"
-                     f"   Subject: {subject}\n"
-                     f"   CC: {', '.join(cc_recipients) if cc_recipients else 'None'}"
-            )]
+        # elif name == "send_email":
+        #     # EMAIL SENDING DISABLED - READ ONLY MODE
+        #     return [types.TextContent(
+        #         type="text",
+        #         text="❌ Email sending is disabled. This MCP is in read-only mode."
+        #     )]
         
         elif name == "get_calendar_events":
             days = min(arguments.get("days", 7), 30)
