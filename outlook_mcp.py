@@ -10,14 +10,20 @@ import os
 import sys
 import requests
 import base64
+import traceback
+import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from urllib.parse import urlencode
 from dotenv import load_dotenv
 
+# Enable detailed logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
 # MCP imports
 from mcp.server import Server
 from mcp.server.models import InitializationOptions
+from mcp.server import NotificationOptions
 import mcp.server.stdio
 import mcp.types as types
 
@@ -155,6 +161,55 @@ class GraphClient:
             ]
         
         return self._make_request("POST", "/me/events", event_data)
+    
+    def delete_event(self, event_id):
+        """Delete a calendar event"""
+        return self._make_request("DELETE", f"/me/events/{event_id}")
+    
+    def update_event(self, event_id, subject=None, start_time=None, end_time=None, 
+                    body=None, location=None, attendees=None, timezone_name="UTC"):
+        """Update an existing calendar event"""
+        event_data = {}
+        
+        if subject is not None:
+            event_data["subject"] = subject
+        
+        if start_time is not None:
+            event_data["start"] = {
+                "dateTime": start_time.isoformat(),
+                "timeZone": timezone_name
+            }
+        
+        if end_time is not None:
+            event_data["end"] = {
+                "dateTime": end_time.isoformat(),
+                "timeZone": timezone_name
+            }
+        
+        if body is not None:
+            event_data["body"] = {
+                "contentType": "text",
+                "content": body
+            }
+        
+        if location is not None:
+            event_data["location"] = {
+                "displayName": location
+            }
+        
+        if attendees is not None:
+            event_data["attendees"] = [
+                {
+                    "emailAddress": {
+                        "address": email,
+                        "name": email.split("@")[0]
+                    },
+                    "type": "required"
+                }
+                for email in attendees
+            ]
+        
+        return self._make_request("PATCH", f"/me/events/{event_id}", event_data)
     
     def get_user_info(self):
         """Get current user information"""
@@ -308,6 +363,59 @@ async def handle_list_tools() -> List[types.Tool]:
             }
         ),
         types.Tool(
+            name="update_calendar_event",
+            description="Update an existing calendar event",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "event_id": {
+                        "type": "string",
+                        "description": "The ID of the event to update"
+                    },
+                    "subject": {
+                        "type": "string",
+                        "description": "New event title (optional)"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "description": "New start time in ISO format (e.g., 2025-08-14T14:00:00) (optional)"
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "description": "New end time in ISO format (optional)"
+                    },
+                    "location": {
+                        "type": "string",
+                        "description": "New event location (optional)"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "New event description (optional)"
+                    },
+                    "attendees": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "New attendee email addresses (optional)"
+                    }
+                },
+                "required": ["event_id"]
+            }
+        ),
+        types.Tool(
+            name="delete_calendar_event",
+            description="Delete a calendar event by ID",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "event_id": {
+                        "type": "string",
+                        "description": "The ID of the event to delete"
+                    }
+                },
+                "required": ["event_id"]
+            }
+        ),
+        types.Tool(
             name="get_user_info",
             description="Get current user's profile information",
             inputSchema={
@@ -407,6 +515,7 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[types.T
             event_summaries = []
             for event in events:
                 subject = event.get("subject", "No title")
+                event_id = event.get("id", "")
                 start_dt = event.get("start", {}).get("dateTime", "")
                 end_dt = event.get("end", {}).get("dateTime", "")
                 location = event.get("location", {}).get("displayName", "No location")
@@ -429,6 +538,7 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[types.T
                 
                 event_summaries.append(
                     f"📅 **{subject}**\n"
+                    f"   ID: {event_id}\n"
                     f"   When: {time_str}\n"
                     f"   Where: {location}{attendee_text}\n"
                 )
@@ -493,6 +603,117 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[types.T
                      f"   When: {start_time.strftime('%Y-%m-%d %H:%M')} - {end_time.strftime('%H:%M')}{location_text}{attendee_text}"
             )]
         
+        elif name == "update_calendar_event":
+            event_id = arguments["event_id"]
+            subject = arguments.get("subject")
+            start_time_str = arguments.get("start_time")
+            end_time_str = arguments.get("end_time")
+            location = arguments.get("location")
+            description = arguments.get("description")
+            attendees = arguments.get("attendees")
+            
+            # Parse datetime strings if provided
+            start_time = None
+            end_time = None
+            
+            if start_time_str:
+                try:
+                    for fmt in ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M"]:
+                        try:
+                            start_time = datetime.strptime(start_time_str.replace('Z', ''), fmt)
+                            break
+                        except ValueError:
+                            continue
+                    else:
+                        raise ValueError(f"Could not parse start time: {start_time_str}")
+                except ValueError as e:
+                    return [types.TextContent(
+                        type="text",
+                        text=f"❌ Error parsing start time: {e}\n"
+                             f"Please use format like: 2025-08-14T14:00:00"
+                    )]
+            
+            if end_time_str:
+                try:
+                    for fmt in ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M"]:
+                        try:
+                            end_time = datetime.strptime(end_time_str.replace('Z', ''), fmt)
+                            break
+                        except ValueError:
+                            continue
+                    else:
+                        raise ValueError(f"Could not parse end time: {end_time_str}")
+                except ValueError as e:
+                    return [types.TextContent(
+                        type="text",
+                        text=f"❌ Error parsing end time: {e}\n"
+                             f"Please use format like: 2025-08-14T14:00:00"
+                    )]
+            
+            try:
+                result = graph_client.update_event(
+                    event_id=event_id,
+                    subject=subject,
+                    start_time=start_time,
+                    end_time=end_time,
+                    location=location,
+                    body=description,
+                    attendees=attendees
+                )
+                
+                # Build update summary
+                updates = []
+                if subject:
+                    updates.append(f"Title: {subject}")
+                if start_time and end_time:
+                    updates.append(f"Time: {start_time.strftime('%Y-%m-%d %H:%M')} - {end_time.strftime('%H:%M')}")
+                elif start_time:
+                    updates.append(f"Start time: {start_time.strftime('%Y-%m-%d %H:%M')}")
+                elif end_time:
+                    updates.append(f"End time: {end_time.strftime('%Y-%m-%d %H:%M')}")
+                if location:
+                    updates.append(f"Location: {location}")
+                if description:
+                    updates.append(f"Description: {description}")
+                if attendees:
+                    updates.append(f"Attendees: {', '.join(attendees)}")
+                
+                update_text = "\n   ".join(updates) if updates else "No changes specified"
+                
+                return [types.TextContent(
+                    type="text",
+                    text=f"✅ Calendar event updated successfully!\n"
+                         f"   Event ID: {event_id}\n"
+                         f"   Updates:\n   {update_text}"
+                )]
+            except Exception as e:
+                if "404" in str(e):
+                    return [types.TextContent(
+                        type="text",
+                        text=f"❌ Event not found. The event ID '{event_id}' may be invalid."
+                    )]
+                else:
+                    raise e
+        
+        elif name == "delete_calendar_event":
+            event_id = arguments["event_id"]
+            
+            try:
+                graph_client.delete_event(event_id)
+                return [types.TextContent(
+                    type="text",
+                    text=f"✅ Calendar event deleted successfully!\n"
+                         f"   Event ID: {event_id}"
+                )]
+            except Exception as e:
+                if "404" in str(e):
+                    return [types.TextContent(
+                        type="text",
+                        text=f"❌ Event not found. The event ID '{event_id}' may be invalid or the event may have already been deleted."
+                    )]
+                else:
+                    raise e
+        
         elif name == "get_user_info":
             user = graph_client.get_user_info()
             
@@ -535,13 +756,22 @@ async def main():
                     server_name="outlook-connector",
                     server_version="1.0.0",
                     capabilities=server.get_capabilities(
-                        notification_options=None,
-                        experimental_capabilities=None
+                       notification_options=NotificationOptions(),
+                       experimental_capabilities={})
                     )
-                )
             )
     except Exception as e:
         print(f"❌ Server error: {e}", file=sys.stderr)
+        print(f"❌ Full traceback:", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        
+        # If it's an ExceptionGroup (TaskGroup), print sub-exceptions
+        if hasattr(e, 'exceptions'):
+            print("❌ Sub-exceptions:", file=sys.stderr)
+            for i, sub_exc in enumerate(e.exceptions):
+                print(f"  Sub-exception {i}: {type(sub_exc).__name__}: {sub_exc}", file=sys.stderr)
+                traceback.print_exception(type(sub_exc), sub_exc, sub_exc.__traceback__, file=sys.stderr)
+        
         sys.exit(1)
 
 if __name__ == "__main__":
